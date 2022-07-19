@@ -1,6 +1,5 @@
-using LinearAlgebra, Distributions, Random, Plots, StatsBase, SpecialFunctions, Parameters
 using Base.Threads: @threads
-using ProgressMeter, Flux
+using Flux
 using Zygote:Buffer
 
 ##### struct of ergflow 
