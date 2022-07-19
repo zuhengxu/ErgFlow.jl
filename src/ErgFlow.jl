@@ -12,9 +12,10 @@ export HamFlow_1d, HF1d_params, HamFlowRot, HamFlow, HF_params
 ####################################
 include("train.jl") # SGD using Zygote
 include("util.jl")
-include("error_checking.jl")
+include("leapfrog.jl")
 include("ham_rot.jl")
 include("ham.jl")
+include("error_checking.jl")
 
 
 end
