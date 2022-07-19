@@ -28,3 +28,6 @@ function error_checking_bwd(o::Union{HamFlow, HamFlowRot}, a::HF_params, n_mcmc:
     end
     return E
 end
+
+
+# code just 
