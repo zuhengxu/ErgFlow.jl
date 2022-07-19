@@ -1,4 +1,4 @@
-using Flux, ProgressMeter
+using Flux
 using Zygote: Params, pullback
 
 
