@@ -1,0 +1,13 @@
+name = "ErgFlow"
+uuid = "ad0cea39-8d4d-4201-843a-bb3627389321"
+authors = ["Zuheng Xu"]
+version = "0.1.0"
+
+[compat]
+julia = "1.7.1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
