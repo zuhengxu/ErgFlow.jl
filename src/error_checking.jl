@@ -1,7 +1,7 @@
 function leapfrog_error(o::ErgodicFlow, a::HF_params, n_lfrg::Int; Nsample::Int = 100)
-    ```
-    compute ||(z, ρ, u) - lfrg∘lfrg^{-1}(z, ρ, u)||
-    ```
+```
+compute "||(z, ρ, u) - lfrg∘lfrg^{-1}(z, ρ, u)||"
+```
     E = zeros(Nsample)
     prog_bar = ProgressMeter.Progress(Nsample, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     @threads for i ∈ 1:Nsample
@@ -20,10 +20,10 @@ function leapfrog_error(o::ErgodicFlow, a::HF_params, n_lfrg::Int; Nsample::Int 
 end
 
 function error_checking_fwd(o::ErgodicFlow, a::HF_params, n_mcmc::Int; Nsample::Int = 100, refresh::Function = pseudo_refresh_coord, inv_ref::Function = inv_refresh_coord)
-    ```
-    T = ergflow
-    compute ||(z, ρ, u) - T^{-1}∘T(z, ρ, u)||
-    ```
+```
+T = ergflow
+compute "||(z, ρ, u) - T^{-1}∘T(z, ρ, u)||"
+```
     E = zeros(Nsample)
     prog_bar = ProgressMeter.Progress(Nsample, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     @threads for i ∈ 1:Nsample
@@ -42,10 +42,10 @@ function error_checking_fwd(o::ErgodicFlow, a::HF_params, n_mcmc::Int; Nsample::
 end
 
 function error_checking_bwd(o::ErgodicFlow, a::HF_params, n_mcmc::Int; Nsample::Int = 100, refresh::Function = pseudo_refresh_coord, inv_ref::Function = inv_refresh_coord)
-    ```
-    T = ergflow
-    compute ||(z, ρ, u) - T∘T^{-1}(z, ρ, u)||
-    ```
+```
+T = ergflow
+compute "||(z, ρ, u) - T∘T^{-1}(z, ρ, u)||"
+```
     E = zeros(Nsample)
     prog_bar = ProgressMeter.Progress(Nsample, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     for i ∈ 1:Nsample
