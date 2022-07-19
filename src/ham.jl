@@ -29,7 +29,6 @@ end
 
 
 
-
 function pseudo_refresh_coord(o::HamFlow, z, ρ, u)
     buf = Buffer(ρ)
     for i in 1:o.d 

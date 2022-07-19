@@ -5,7 +5,7 @@ using ForwardDiff, LinearAlgebra, Distributions, Random, StatsBase, SpecialFunct
 abstract type ErgodicFlow end
 abstract type flow_params end
 
-export HamFlow_1d, HF1d_params, HamFlowRot, HamFlow, HF_params
+export ErgodicFlow, HamFlow_1d, HF1d_params, HamFlowRot, HamFlow, HF_params
 
 ##################################3
 # ErgodicFlow via Hamiltonian dynamics 

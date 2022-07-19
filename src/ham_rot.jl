@@ -38,7 +38,6 @@ struct HF_params <: flow_params
 end
 
 
-
 ####################
 # first 2d version
 ###################
