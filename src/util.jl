@@ -25,16 +25,17 @@ function rotation_mat(θ::Float64)
     return  [cos(θ) -sin(θ); sin(θ) cos(θ)]
 end
 
-
-
 # X = [0:0.1:100 ;]
 # plot(X, [stream(x, i) for (x, i) in zip(X, [1:1001 ;])] )
 # plot(rand(1001))
 
 ###############
-# self_defined function
+# logsumexp function
 ##############
 function logmeanexp_slice(w; dims = d)
+```
+logsumexp function works on a specific slice of array 
+```
     a = maximum(w, dims = dims)
     wl = mean(expm1.(w .- a) .+ 1.0, dims = dims)
     return a .+ log.(wl)
@@ -42,6 +43,10 @@ end
 
 
 function logsumexp_stream(X)
+```
+logsumexp function without memory allocation
+adapt from "http://www.nowozin.net/sebastian/blog/streaming-log-sum-exp-computation.html"
+```
     alpha = -Inf
     r = 0.0
     for x ∈ X

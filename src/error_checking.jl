@@ -19,6 +19,19 @@ compute "||(z, ρ, u) - lfrg∘lfrg^{-1}(z, ρ, u)||"
     return E
 end
 
+function error_checking(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, inv_ref::Function, z0, ρ0, u0, n_mcmc::Int)
+```
+T = ergflow
+compute "||(z0, ρ0, u0) - T^{-1}∘T(z0, ρ0, u0)|| for given (z0, ρ0, u0) "
+```
+    # fwd and bwd flow
+    z1, ρ1, u1 = flow_fwd(o, ϵ, refresh, z0, ρ0, u0, n_mcmc)
+    z, ρ, u = flow_bwd(o, ϵ, inv_ref, z1, ρ1, u1, n_mcmc)
+    # compute err
+    error =  sum(abs2, z .- z0) + sum(abs2, ρ.-ρ0) + sum(abs2, u - u0)
+    return sqrt(error)
+end
+
 function error_checking_fwd(o::ErgodicFlow, a::HF_params, n_mcmc::Int; Nsample::Int = 100, refresh::Function = pseudo_refresh_coord, inv_ref::Function = inv_refresh_coord)
 ```
 T = ergflow
