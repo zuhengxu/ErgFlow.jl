@@ -1,4 +1,3 @@
-using LinearAlgebra, Distributions, Random, Plots, StatsBase, SpecialFunctions, Parameters
 using Base.Threads: @threads
 using ProgressMeter, Flux
 using Zygote:Buffer
@@ -186,7 +185,7 @@ function error_checking(o::HamFlow, ϵ::Vector{Float64}, refresh!::Function, inv
     z0, ρ0, u0 = copy(z), copy(ρ), copy(u)
     u = flow_fwd!(o, ϵ, refresh!, z, ρ, u, n_mcmc)
     u = flow_bwd!(o, ϵ, inv_ref!, z, ρ, u, n_mcmc)
-    return sum(abs, z .- z0) + sum(abs, ρ.-ρ0) + abs(u - u0)
+    return sqrt(sum(abs2, z .- z0) + sum(abs2, ρ.-ρ0) + sum(abs2, u - u0))
 end
 
 
@@ -216,7 +215,7 @@ function log_density_est(z, ρ, u, o::HamFlow, ϵ, μ, D, inv_ref::Function, n_m
 end
 
 
-function log_density_slice_2d(X, Y, ρ, u, o::ErgFlow.HamFlow, ϵ, μ, D, inv_ref::Function, n_mcmc::Int; nBurn = 0, error_check = true) 
+function log_density_slice_2d(X, Y, ρ, u, o::HamFlow, ϵ, μ, D, inv_ref::Function, n_mcmc::Int; nBurn = 0, error_check = true) 
         n1, n2 = size(X, 1), size(Y, 1)
         T = Matrix{Float64}(undef, n1, n2)
         E = Matrix{Float64}(undef, n1, n2)

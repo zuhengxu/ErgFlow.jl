@@ -63,3 +63,23 @@ compute "||(z, ρ, u) - T∘T^{-1}(z, ρ, u)||"
     return E
 end
 
+function check_time_shift(t0::Float64, Ns::Vector{Int64}, shift::Function, inv_shift::Function)
+    E = zeros(size(Ns, 1))
+    @threads for k in 1:size(Ns,1)
+        t  = t0
+        for i = 1:Ns[k] 
+                t = shift(t)
+        end
+        for i = 1:Ns[k] 
+                t = inv_shift(t)
+        end
+        err = norm(t-t0)
+        E[k] = err 
+    end
+    return E 
+end    
+
+
+        
+        
+    

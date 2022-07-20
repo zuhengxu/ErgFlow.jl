@@ -21,6 +21,8 @@ docs/site/
 *.png 
 *.jld
 
+# archive folder
+old_code/*
 
 # ide aux file
 .vscode/

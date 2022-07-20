@@ -88,39 +88,39 @@ function log_sigmoid(x)
     end
 end
 
-function cdf_logistic_std(x) 
+function cdf_logistic(x) 
     # return 1. / (1 + exp(-x))
     return exp(log_sigmoid(x))
 end 
 
-function invcdf_logistic_std(x)
+function invcdf_logistic(x)
     # return log(x/(1. - x))
     return log(x) - log1p(-x)
 end 
 
-function pdf_logistic_std(x)
+function pdf_logistic(x)
     return exp(-x) / (1 + exp(-x))^2
 end
 
-function lpdf_logistic_std(x::Float64)
+function lpdf_logistic(x::Float64)
     # return -x - 2. * logsumexp([0., -x])
     return -x -2. * log1p(exp(-x))
 end
 
-function lpdf_logistic_std(x::Vector{Float64})
+function lpdf_logistic(x::Vector{Float64})
     # d = size(x,1)
     # return sum(-x .- 2. * logsumexp_mult(hcat(zeros(d), -x)))
-    return sum(lpdf_logistic_std.(x))
+    return sum(lpdf_logistic.(x))
 end
 
-function ∇lpdf_logistic_std(x::Float64)
+function ∇lpdf_logistic(x::Float64)
     return -1 + 2.0*exp(-x)/(exp(-x) + 1)
     # return -expm1(x)/(exp(x) + 1)
 end
 
-function ∇lpdf_logistic_std(x::Vector{Float64})
+function ∇lpdf_logistic(x::Vector{Float64})
     # return -1 .+ 2. * exp.(-x) ./ (exp.(-x) .+ 1)
-    return ∇lpdf_logistic_std.(x)
+    return ∇lpdf_logistic.(x)
 end
 
 function randlogistic(size::Int)
@@ -128,20 +128,6 @@ function randlogistic(size::Int)
 end
 
 randlogistic()=rand(Logistic())
-
-#####################
-# ESH momentum (not even a valid density)
-# TODO: look at its leapfrog 
-#####################
-
-function ∇lpdf_esh(x::Float64)
-    return -1.0/x
-end
-
-function ∇lpdf_esh(x::Vector)
-    d = size(x, 1)
-    return -d.*x./(norm(x)^2.0)
-end
 
 ###################3
 ## Exp(1/2): for the use of refreshing norm of isotropic Gaussian vector

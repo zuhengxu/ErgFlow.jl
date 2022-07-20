@@ -7,7 +7,7 @@ function leapfrog(o::ErgodicFlow, ϵ, z, ρ)
     return z, ρ
 end
 
-function leapfrog(∇logp, ∇logm, n_lfrg, ϵ, z, ρ)
+function leapfrog(∇logp::Function, ∇logm::Function, n_lfrg::Int, ϵ::Vector{Float64}, z, ρ)
     for i in 1:n_lfrg
         ρ += 0.5 .* ϵ .* ∇logp(z) 
         z -= ϵ .* ∇logm(ρ)
@@ -16,7 +16,7 @@ function leapfrog(∇logp, ∇logm, n_lfrg, ϵ, z, ρ)
     return z, ρ
 end
 
-# function leapfrog(o::Union{HamFlow,HamFlowRot}, ϵ, z, ρ)
+# function leapfrog(o::ErgodicFlow, ϵ, z, ρ)
 # ```
 # leapfrog that combines 2 consecutive steps into 1
 # ```
@@ -31,7 +31,12 @@ end
 #     return z, ρ
 # end
 
+
+
 function leapfrog!(o::ErgodicFlow, ϵ, z, ρ)
+```
+in place leapfrog update "(combines 2 consecutive steps into 1)"
+```
     ρ .+= 0.5 .* ϵ .* o.∇logp(z) 
     for i in 1:o.n_lfrg-1
         z .-= ϵ .* o.∇logp_mom(ρ)

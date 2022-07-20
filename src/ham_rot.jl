@@ -1,4 +1,3 @@
-using Base.Threads: @threads
 using Flux
 using Zygote:Buffer
 
