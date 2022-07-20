@@ -189,9 +189,3 @@ function single_elbo(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function
     logqN =  logmeanexp(@view(lpdfs[nBurn+1:end]))
     return el - logqN
 end
-
-
-
-#####################
-## KSD evaluation
-#####################
