@@ -9,8 +9,8 @@ compute "||(z, ρ, u) - lfrg∘lfrg^{-1}(z, ρ, u)||"
         ρ0= o.ρ_sampler(o.d)
         z0 = a.D.* o.q_sampler(o.d) .+ a.μ # q0 ∼ N(μ, D^2)
         # fwd and bwd leapfrog
-        z1, ρ1 = leapfrog(o.logp, o.logp_mom, n_lfrg, a.leapfrog_stepsize, z0, ρ0)
-        z, ρ= leapfrog(o.logp, o.logp_mom, n_lfrg, -a.leapfrog_stepsize, z1, ρ1)
+        z1, ρ1 = leapfrog(o.logp, o.lpdf_mom, n_lfrg, a.leapfrog_stepsize, z0, ρ0)
+        z, ρ= leapfrog(o.logp, o.lpdf_mom, n_lfrg, -a.leapfrog_stepsize, z1, ρ1)
         # compute err
         error =  sum(abs2, z .- z0) + sum(abs2, ρ.-ρ0)
         E[i] =  sqrt(error)
