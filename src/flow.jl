@@ -146,7 +146,7 @@ function flow_fwd_save(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, z
     U[1] = u
     prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     for i in 1:n_mcmc - 1 
-        z, ρ = leapfrog_save!(@view(T1[:,:,i]), @view(M1[:,:,i]), o, ϵ, z, ρ)
+        z, ρ = leapfrog_save!(@view(T1[:,:,i]), @view(M1[:,:,i]), o, ϵ, z, ρ; freq = freq)
         ρ, u = refresh(o, z, ρ, u)
         # println(i, "/$n_mcmc")
         T[i+1,:] .= z

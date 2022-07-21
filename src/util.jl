@@ -4,10 +4,10 @@ include("momentum.jl")
 # momentum Refreshement
 #############
 stream(x, u) = (sin(2.0*x + u) + 1.0)/2.0
-constant(x, u) = π/4.0
+constant(x, u) = π/16.0
 stream_x(x, u) = (sin(2.0*x) + 1.0)/2.0
 stream_u(x, u) = (sin(π/4.0*u) + 1.0)/2.0
-# sample(x, i) = rand()
+# resample(x, i) = rand()
 
 ###############
 # pseudo time shift

@@ -16,7 +16,7 @@ end
 
 export ErgodicFlow, HamFlowRot, HamFlow, HF_params
 export cdf_exp, invcdf_exp, cdf_laplace_std, invcdf_laplace_std
-export pseudo_refresh, pseudo_refresh_coord
+export pseudo_refresh, pseudo_refresh_coord, inv_refresh, inv_refresh_coord
 
 
 ##################################3
