@@ -19,6 +19,20 @@ function leapfrog(∇logp::Function, ∇logm::Function, n_lfrg::Int, ϵ::Vector{
     return z, ρ
 end
 
+function leapfrog_save!(T, M, o::ErgodicFlow, ϵ, z, ρ; freq::Int=10)
+    for i in 1:o.n_lfrg
+        ρ += 0.5 .* ϵ .* o.∇logp(z) 
+        z -= ϵ .* o.∇logp_mom(ρ)
+        ρ += 0.5 .* ϵ .* o.∇logp(z) 
+        if i % freq == 0
+            T[Int(i/freq),:] .= z 
+            M[Int(i/freq),:] .= ρ
+        end
+    end
+    return z, ρ
+end
+
+
 # function leapfrog(o::ErgodicFlow, ϵ, z, ρ)
 # ```
 # leapfrog that combines 2 consecutive steps into 1
@@ -81,8 +95,8 @@ function flow_bwd(o::ErgodicFlow, ϵ::Vector{Float64}, inv_ref::Function, z, ρ,
 end
 
 function flow_fwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, z, ρ, u, n_mcmc::Int)
-    T = Matrix{eltype(z)}(size(z, 1), n_mcmc)
-    M = Matrix{eltype(ρ)}(size(ρ, 1), n_mcmc)
+    T = Matrix{eltype(z)}(undef, n_mcmc, o.d)
+    M = Matrix{eltype(ρ)}(undef, n_mcmc, o.d)
     U = Vector{typeof(u)}(n_mcmc)
     T[1,:] .= z
     M[1,:] .= ρ
@@ -101,9 +115,9 @@ function flow_fwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, 
 end
 
 function flow_bwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, inv_ref::Function, z, ρ, u, n_mcmc::Int)
-    T = Matrix{eltype(z)}(size(z, 1), n_mcmc)
-    M = Matrix{eltype(ρ)}(size(ρ, 1), n_mcmc)   
-    U = Vector{typeof(u)}(n_mcmc)
+    T = Matrix{eltype(z)}(undef, n_mcmc, o.d)
+    M = Matrix{eltype(ρ)}(undef, n_mcmc, o.d)
+    U = Vector{typeof(u)}(undef, n_mcmc)
     T[1,:] .= z
     M[1,:] .= ρ
     U[1] = u
@@ -118,6 +132,29 @@ function flow_bwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, inv_ref::Function, 
         ProgressMeter.next!(prog_bar)
     end
     return T, M, U
+end
+
+## this is only for vis
+function flow_fwd_save(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, z, ρ, u, n_mcmc::Int; freq::Int = 10)
+    n = Int(floor(o.n_lfrg / freq))
+    T1, M1 = zeros(n, o.d, n_mcmc-1), zeros(n, o.d, n_mcmc-1)
+    T = Matrix{eltype(z)}(undef, n_mcmc, o.d)
+    M = Matrix{eltype(ρ)}(undef, n_mcmc, o.d)
+    U = Vector{typeof(u)}(undef, n_mcmc)
+    T[1,:] .= z
+    M[1,:] .= ρ
+    U[1] = u
+    prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
+    for i in 1:n_mcmc - 1 
+        z, ρ = leapfrog_save!(@view(T1[:,:,i]), @view(M1[:,:,i]), o, ϵ, z, ρ)
+        ρ, u = refresh(o, z, ρ, u)
+        # println(i, "/$n_mcmc")
+        T[i+1,:] .= z
+        M[i+1,:] .= ρ
+        U[i+1] = u
+        ProgressMeter.next!(prog_bar)
+    end
+    return vcat(eachslice(T1, dims =3)...), vcat(eachslice(M1, dims = 3)...), T, M, U
 end
 
 
