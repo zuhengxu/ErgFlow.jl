@@ -25,6 +25,7 @@ export pseudo_refresh, pseudo_refresh_coord, inv_refresh, inv_refresh_coord
 include("util.jl") 
 include("flow.jl") # general function used by Ergodic Flow (leapfrog, flow_fwd, flow_bwd, sampler) 
 include("elbo.jl") # ELBOs for ErgFlow
+include("ham_1d.jl") # ErgFlow only for 1d target
 include("ham.jl") # standard Ergodic Flow using coordinate CDF/inv_cdf refresh
 include("ham_rot.jl") # ErgFlow with Gaussian momentum using pairwise Gaussian refresh (rotation + rescale norm)
 include("error_checking.jl")
