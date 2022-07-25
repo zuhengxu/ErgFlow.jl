@@ -115,7 +115,9 @@ function check_time_shift(t0::Float64, Ns::Vector{Int64}, shift::Function, inv_s
     end
     return E 
 end    
-    
+   
+
+
 function flow_fwd_err_tr(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function,inv_ref::Function, z, ρ, u, n_mcmc::Int)
     leap_err = Vector{typeof(u)}(undef, n_mcmc)
     ref_err = Vector{typeof(u)}(undef, n_mcmc)
@@ -138,7 +140,8 @@ function flow_fwd_err_tr(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function,
     return leap_err, ref_err, total_err, E
 end
 
- 
+
+
 function flow_fwd_err_tr(o::ErgodicFlow, a::HF_params, refresh::Function,inv_ref::Function, n_mcmc::Int; Nsample::Int= 100)
 
     leap_E, ref_E = zeros(Nsample, n_mcmc), zeros(Nsample, n_mcmc) 

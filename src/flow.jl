@@ -95,43 +95,59 @@ function flow_bwd(o::ErgodicFlow, ϵ::Vector{Float64}, inv_ref::Function, z, ρ,
 end
 
 function flow_fwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, z, ρ, u, n_mcmc::Int)
-    T = Matrix{eltype(z)}(undef, n_mcmc, o.d)
-    M = Matrix{eltype(ρ)}(undef, n_mcmc, o.d)
-    U = Vector{typeof(u)}(n_mcmc)
-    T[1,:] .= z
-    M[1,:] .= ρ
-    U[1] = u
+    T = Matrix{eltype(z)}(undef, 2*(n_mcmc-1)+1, o.d)
+    M = Matrix{eltype(ρ)}(undef, 2*(n_mcmc-1)+1, o.d)
+    U = Vector{typeof(u)}(undef, 2*(n_mcmc-1)+1)
     prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     for i in 1:n_mcmc - 1 
+        k = 2*(i-1)
+        T[k+1, :] .= z 
+        M[k+1,:] .= ρ
+        U[k+1] = u
         z, ρ = leapfrog(o, ϵ, z, ρ)
+        T[k+2,:] .= z
+        M[k+2,:] .= ρ
+        U[k+2] = u
         ρ, u = refresh(o, z, ρ, u)
         # println(i, "/$n_mcmc")
-        T[i+1,:] .= z
-        M[i+1,:] .= ρ
-        U[i+1] = u
         ProgressMeter.next!(prog_bar)
     end
+    T[end,:] .= z
+    M[end,:] .= ρ
+    U[end] = u
     return T, M, U
 end
 
 function flow_bwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, inv_ref::Function, z, ρ, u, n_mcmc::Int)
-    T = Matrix{eltype(z)}(undef, n_mcmc, o.d)
-    M = Matrix{eltype(ρ)}(undef, n_mcmc, o.d)
-    U = Vector{typeof(u)}(undef, n_mcmc)
+    T = Matrix{eltype(z)}(undef, 2*(n_mcmc-1)+1, o.d)
+    M = Matrix{eltype(ρ)}(undef, 2*(n_mcmc-1)+1, o.d)
+    U = Vector{typeof(u)}(undef, 2*(n_mcmc-1)+1)
+    prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     T[1,:] .= z
     M[1,:] .= ρ
     U[1] = u
-    prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     for i in 1:n_mcmc - 1 
         ρ, u = inv_ref(o, z, ρ, u)
-        z, ρ = leapfrog(o, -ϵ, z, ρ)
+        k = 2*(i-1)
+        T[k+2, :] .= z 
+        M[k+2,:] .= ρ
+        U[k+2] = u
         # println(i, "/$n_mcmc")
-        T[i+1,:] .= z
-        M[i+1,:] .= ρ
-        U[i+1] = u
+        z, ρ = leapfrog(o, -ϵ, z, ρ)
+        T[k+3,:] .= z
+        M[k+3,:] .= ρ
+        U[k+3] = u
         ProgressMeter.next!(prog_bar)
     end
+    # return T[end:-1:1, :], M[end:-1:1, :], U[end:-1:1]
     return T, M, U
+end
+
+
+function flow_trace(o::ErgodicFlow, a::HF_params, refresh::Function, inv_ref::Function, z, ρ, u, n_mcmc::Int)
+    T_fwd, M_fwd, U_fwd = flow_fwd_trace(o, a.leapfrog_stepsize, refresh, z,ρ, u, n_mcmc)
+    T_bwd, M_bwd, U_bwd = flow_bwd_trace(o, a.leapfrog_stepsize, inv_ref, T_fwd[end, :],M_fwd[end, :], U_fwd[end], n_mcmc)
+    return T_fwd, M_fwd, U_fwd, T_bwd, M_bwd, U_bwd 
 end
 
 ## this is only for vis
@@ -156,7 +172,6 @@ function flow_fwd_save(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, z
     end
     return vcat(eachslice(T1, dims =3)...), vcat(eachslice(M1, dims = 3)...), T, M, U
 end
-
 
 
 #################
