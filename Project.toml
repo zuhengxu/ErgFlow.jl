@@ -1,7 +1,7 @@
 name = "ErgFlow"
 uuid = "ad0cea39-8d4d-4201-843a-bb3627389321"
 authors = ["Zuheng Xu"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -19,6 +19,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 julia = "1.7.1"
+julia = "1.7.3"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
