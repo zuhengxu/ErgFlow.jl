@@ -212,3 +212,47 @@ function Sampler!(T::Matrix{Float64}, o::ErgodicFlow, a::HF_params, refresh::Fun
         ProgressMeter.next!(prog_bar)
     end
 end
+
+
+function flow_sampler(o::ErgodicFlow, a::HF_params, refresh::Function, z, ρ, u, n_mcmc::Int)
+    T = Matrix{eltype(z)}(undef, n_mcmc, o.d)
+    M = Matrix{eltype(ρ)}(undef, n_mcmc, o.d)
+    U = Vector{typeof(u)}(undef, n_mcmc)
+    prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
+    for i in 1:n_mcmc - 1 
+        T[i, :] .= z 
+        M[i,:] .= ρ
+        U[i] = u
+        z, ρ = leapfrog(o, a.leapfrog_stepsize, z, ρ)
+        ρ, u = refresh(o, z, ρ, u)
+        # println(i, "/$n_mcmc")
+        ProgressMeter.next!(prog_bar)
+    end
+    T[end,:] .= z
+    M[end,:] .= ρ
+    U[end] = u
+    return T, M, U
+end
+function flow_sampler!(T, o::ErgodicFlow, a::HF_params, refresh::Function, z, ρ, u, n_mcmc::Int)
+    prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
+    for i in 1:n_mcmc - 1 
+        T[i, :] .= z 
+        z, ρ = leapfrog(o, a.leapfrog_stepsize, z, ρ)
+        ρ, u = refresh(o, z, ρ, u)
+        # println(i, "/$n_mcmc")
+        ProgressMeter.next!(prog_bar)
+    end
+    T[end,:] .= z
+end
+
+function flow_sampler(o::ErgodicFlow, a::HF_params, refresh::Function, z, ρ, u, n_mcmc::Int, n_samples::Int)
+    T = Matrix{eltype(z)}(undef, n_samples, o.d)
+    k = Int(n_samples/n_mcmc)
+    for i in 1:k 
+        flow_sampler!(@view(T[(i-1)*n_mcmc+1:i*n_mcmc, :]), o, a, refresh,z, ρ, u, n_mcmc)
+        z = randn(o.d) .* a.D .+ a.μ
+        ρ = o.ρ_sampler(o.d)
+        u = rand()
+    end
+    return T
+end
