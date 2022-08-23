@@ -10,7 +10,7 @@ function leapfrog(o::ErgodicFlow, ϵ, z, ρ)
     return z, ρ
 end
 
-function leapfrog(∇logp::Function, ∇logm::Function, n_lfrg::Int, ϵ::Vector{Float64}, z, ρ)
+function leapfrog(∇logp::Function, ∇logm::Function, n_lfrg::Int, ϵ::Vector{Real}, z, ρ)
     for i in 1:n_lfrg
         ρ += 0.5 .* ϵ .* ∇logp(z) 
         z -= ϵ .* ∇logm(ρ)
@@ -214,6 +214,9 @@ function Sampler!(T::Matrix{Float64}, o::ErgodicFlow, a::HF_params, refresh::Fun
 end
 
 
+#################
+# generating samples from the whole traj
+#################3
 function flow_sampler(o::ErgodicFlow, a::HF_params, refresh::Function, z, ρ, u, n_mcmc::Int)
     T = Matrix{eltype(z)}(undef, n_mcmc, o.d)
     M = Matrix{eltype(ρ)}(undef, n_mcmc, o.d)

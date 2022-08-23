@@ -12,13 +12,13 @@ stream_u(x, u) = (sin(π/4.0*u) + 1.0)/2.0
 ###############
 # pseudo time shift
 ###############
-mixer(u::Float64) = (u + π/16) % 1
-inv_mixer(u::Float64) = (u + 1.0- π/16) % 1
+mixer(u::Real) = (u + π/16) % 1
+inv_mixer(u::Real) = (u + 1.0- π/16) % 1
 
 ###################3
 # rotation matrix
 ####################
-function rotation_mat(θ::Float64)
+function rotation_mat(θ::Real)
 ```
 2d-rotation matrix for counterclockwise rotation by angle θ
 ```
