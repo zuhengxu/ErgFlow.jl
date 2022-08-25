@@ -32,9 +32,6 @@ include("elbo.jl") # ELBOs for ErgFlow
 include("ham_1d.jl") # ErgFlow only for 1d target
 include("ham.jl") # standard Ergodic Flow using coordinate CDF/inv_cdf refresh
 include("ham_rot.jl") # ErgFlow with Gaussian momentum using pairwise Gaussian refresh (rotation + rescale norm)
-
-# include("round.jl") 
-# include("sb_refresh.jl")
-include("error_checking.jl")
+include("error_checking.jl") # functions checking numerical error
 
 end
