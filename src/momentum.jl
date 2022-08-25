@@ -1,4 +1,4 @@
-using Random
+using Random, SearchSortedNearest
 ################33
 # normal
 ##############3
@@ -18,7 +18,7 @@ function ∇lpdf_normal(x)
     return -x 
 end
 
-function cdf_normal(x) 
+function cdf_normal(x::Real) 
     z = x / sqrt(2.0)
     if abs(x) > 5.7
         return 1.0- 0.5*erfc(z)
@@ -27,7 +27,7 @@ function cdf_normal(x)
     end
 end 
 
-function invcdf_normal(x)
+function invcdf_normal(x::Real)
     if x > 0.5
         z = 2.0 - 2.0*x 
         return sqrt(2.0)*erfcinv(z)
@@ -132,11 +132,11 @@ randlogistic()=rand(Logistic())
 ###################3
 ## Exp(1/2): for the use of refreshing norm of isotropic Gaussian vector
 ###################
-function cdf_exp(x::Float64)
+function cdf_exp(x::Real)
     return  -expm1(-0.5*x)
 end
 
-function invcdf_exp(x::Float64)
+function invcdf_exp(x::Real)
     return -2.0*log1p(-x)
 end
 

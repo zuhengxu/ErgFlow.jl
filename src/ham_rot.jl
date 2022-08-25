@@ -22,8 +22,8 @@ struct HamFlowRot<: ErgodicFlow
     pdf_mom::Function
     # pseudo refreshment
     generator::Function
-    rotation::Matrix{Float64}
-    inv_rotation::Matrix{Float64}
+    rotation::Matrix{Real}
+    inv_rotation::Matrix{Real}
     time_shift::Function
     inv_timeshift::Function
 end
@@ -50,7 +50,6 @@ function inv_refresh(o::HamFlowRot,z, ρ, u)
     ρ_old = o.inv_rotation * ρ ./R .*R_old
     return ρ_old, u
 end
-
 
 #######################
 # density estimation

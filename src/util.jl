@@ -1,5 +1,6 @@
 using IrrationalConstants
 include("momentum.jl")
+
 ###########33
 # momentum Refreshement
 #############
@@ -14,6 +15,8 @@ stream_u(x, u) = (sin(π/4.0*u) + 1.0)/2.0
 ###############
 mixer(u::Real) = (u + π/16) % 1
 inv_mixer(u::Real) = (u + 1.0- π/16) % 1
+
+
 
 ###################3
 # rotation matrix
