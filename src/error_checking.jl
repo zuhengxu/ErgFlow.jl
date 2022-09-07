@@ -122,18 +122,18 @@ function flow_fwd_err_tr(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function,
     leap_err = Vector{typeof(u)}(undef, n_mcmc)
     ref_err = Vector{typeof(u)}(undef, n_mcmc)
     total_err = Vector{typeof(u)}(undef,n_mcmc)
-    leap_err[1,:] .= 0
-    ref_err[1,:] .= 0
+    leap_err[1] = 0
+    ref_err[1] = 0
     total_err[1] = 0
     # prog_bar = ProgressMeter.Progress(n_mcmc-1, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     E = error_checking(o, ϵ, refresh, inv_ref, z, ρ, u, n_mcmc)
     for i in 1:n_mcmc - 1 
         # computing err
         leap_err[i+1] = leapfrog_error(o, ϵ, z, ρ)
-        ref_err[i+1] = refresh_error(o, refresh, inv_ref, z, ρ, u)
         total_err[i+1] = one_step_error(o, refresh, inv_ref, ϵ, z, ρ, u)
         # perform fwd flow
         z, ρ = leapfrog(o, ϵ, z, ρ)
+        ref_err[i+1] = refresh_error(o, refresh, inv_ref, z, ρ, u)
         ρ, u = refresh(o, z, ρ, u)
         # ProgressMeter.next!(prog_bar)
     end
