@@ -20,7 +20,7 @@ end
 
 function cdf_normal(x::Real) 
     z = x / sqrt(2.0)
-    if abs(x) > 5.7
+    if abs(x) > 0.0
         return 1.0- 0.5*erfc(z)
     else
         return 0.5 + 0.5*erf(z)
@@ -33,7 +33,7 @@ function invcdf_normal(x::Real)
         return sqrt(2.0)*erfcinv(z)
     else 
         z = 2.0*x - 1.0
-        return erfinv(z)
+        return sqrt(2.0)*erfinv(z)
     end
 end 
 

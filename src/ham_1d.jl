@@ -173,8 +173,3 @@ function numerical_error_cheking(o::HamFlow_1d, a::HF1d_params, X::Vector{Float6
     end
     return T
 end
-
-
-
-
-

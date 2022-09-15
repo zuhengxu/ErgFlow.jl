@@ -106,6 +106,8 @@ function inv_refresh!(o::HamFlow, z, ρ, u)
     return u
 end
 
+
+
 # inplace fwd/bwd flow 
 function flow_fwd!(o::HamFlow, ϵ::Vector{Float64}, refresh!::Function, z, ρ, u, n_mcmc::Int)
     for i in 1:n_mcmc - 1 
@@ -126,6 +128,9 @@ end
 
 
 
+############################
+# density estimation
+############################
 function log_density_est(z, ρ, u, o::HamFlow, ϵ, μ, D, inv_ref::Function, n_mcmc::Int; 
                         nBurn::Int = 0, error_check = false)
     if error_check 
@@ -150,8 +155,19 @@ function log_density_est(z, ρ, u, o::HamFlow, ϵ, μ, D, inv_ref::Function, n_m
 end
 
 
+function log_density_stream(z, ρ, u, o::HamFlow, ϵ, μ, D, inv_ref::Function, n_mcmc::Int; 
+                            nBurn::Int = 0)
 
+end
+
+
+function log_density_stream!()
+
+
+end
+############################
 ### single_elbo estimate 
+############################
 function single_elbo(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
     d = o.d
     K = rand(nBurn+1:n_mcmc) # Num T - 1
