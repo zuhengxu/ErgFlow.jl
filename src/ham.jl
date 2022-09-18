@@ -194,7 +194,7 @@ function single_elbo(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function
     T[K] = o.logq0(z1, μ, D) + o.lpdf_mom(ρ1)
     logJ[1] = 0.0
     # flow forward
-    for i in 1:K-1 
+    @inbounds for i in 1:K-1 
         z1, ρ1 = leapfrog(o, ϵ, z1, ρ1)
         logJ[K-i+1] = -o.lpdf_mom(ρ1)
         ρ1, u1 = refresh(o, z1, ρ1, u1)
@@ -203,7 +203,7 @@ function single_elbo(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function
     end
     el = o.logp(z1) + o.lpdf_mom(ρ1)
     # flow backward
-    for i in K+1:n_mcmc 
+    @inbounds for i in K+1:n_mcmc 
         logJ[i] = o.lpdf_mom(ρ)
         ρ, u = inv_ref(o, z, ρ, u)
         logJ[i] -= o.lpdf_mom(ρ)
