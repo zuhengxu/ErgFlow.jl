@@ -232,7 +232,7 @@ end
 
 
 
-function single_elbo_long(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+function single_elbo_long(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
     # init sample
     d = o.d
     z = D .* o.q_sampler(d) .+ μ
@@ -245,7 +245,7 @@ function single_elbo_long(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Fun
     logqNs = zeros(n_mcmc)    
 
     # flow bwd N-1 step 
-    for i in n_mcmc-1:-1:1
+    @inbounds for i in n_mcmc-1:-1:1
         logJs[i] = o.lpdf_mom(ρ0)
         ρ0, u0 = inv_ref(o, z0, ρ0, u0)
         logJs[i] -= o.lpdf_mom(ρ0)
@@ -258,7 +258,7 @@ function single_elbo_long(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Fun
     # logJ_prod = sum(@view(logJs[1:n_mcmc-1]))
 
     # flow fwd N-1 step
-    for i in n_mcmc:2*n_mcmc - 2 
+    @inbounds for i in n_mcmc:2*n_mcmc - 2 
         z, ρ = leapfrog(o, ϵ, z, ρ)
         logJs[i] = -o.lpdf_mom(ρ)
         ρ, u = refresh(o, z, ρ, u)
@@ -274,7 +274,6 @@ function single_elbo_long(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Fun
         logp += o.logp(z) + o.lpdf_mom(ρ) 
     end
     logp /= n_mcmc
-    # K = rand(nBurn+1:n_mcmc) 
     return logp - mean(logqNs)
 end
 
