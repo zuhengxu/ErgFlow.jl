@@ -31,13 +31,14 @@ end
 # refreshments
 ##################
 function pseudo_refresh_coord(o::HamFlow, z, ρ, u)
-    buf = Buffer(ρ)
+    # buf = Buffer(ρ)
+    ρ1  = copy(ρ)   
     for i in 1:o.d 
-        ξ = (o.cdf_mom(ρ[i]) + o.generator(z[i], u)) % 1.0
-        buf[i] = o.invcdf_mom(ξ)
+        ξ = (o.cdf_mom(ρ1[i]) + o.generator(z[i], u)) % 1.0
+        ρ1[i] = o.invcdf_mom(ξ)
         u = o.time_shift(u)
     end
-    return copy(buf), u 
+    return ρ1, u 
 end
 
 function pseudo_refresh_coord!(o::HamFlow, z, ρ, u)
@@ -69,13 +70,14 @@ function pseudo_refresh!(o::HamFlow, z, ρ, u)
 end
 # inverse of refreshment
 function inv_refresh_coord(o::HamFlow, z, ρ, u)
-    buf = Buffer(ρ)
+    # buf = Buffer(ρ)
+    ρ1  = copy(ρ)   
     for i in o.d:-1:1
         u = o.inv_timeshift(u)
-        ξ = (o.cdf_mom(ρ[i])+ 1.0 - o.generator(z[i], u)) % 1.0
-        buf[i] = o.invcdf_mom(ξ)
+        ξ = (o.cdf_mom(ρ1[i])+ 1.0 - o.generator(z[i], u)) % 1.0
+        ρ1[i] = o.invcdf_mom(ξ)
     end
-    return copy(buf), u
+    return ρ1, u
 end
 
 function inv_refresh_coord!(o::HamFlow, z, ρ, u)
@@ -276,11 +278,4 @@ function single_elbo_long(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, 
     logp /= n_mcmc
     return logp - mean(logqNs)
 end
-
-# function single_elbo_update(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
-
-
-
-
-# end
 
