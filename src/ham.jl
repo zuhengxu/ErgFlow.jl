@@ -1,6 +1,7 @@
 using Base.Threads: @threads
 using ProgressMeter, Flux
 using Zygote:Buffer
+# using LogExpFunctions
 
 ##### struct of ergflow 
 struct HamFlow <: ErgodicFlow
@@ -181,7 +182,7 @@ end
 ############################
 ### single_elbo estimate 
 ############################
-function single_elbo(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+function single_elbo_naive(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
     d = o.d
     K = rand(nBurn+1:n_mcmc) # Num T - 1
     z = D .* o.q_sampler(d) .+ μ
@@ -219,7 +220,7 @@ function single_elbo(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function
     return el - logqN
 end
 
-# function single_elbo(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+# function single_elbo_naive(o::HamFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
 #     d = o.d
 #     K = rand(nBurn+1:n_mcmc) # Num T - 1
 #     z = D .* o.q_sampler(d) .+ μ
@@ -233,6 +234,54 @@ end
 # end
 
 
+function single_elbo_fast(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+    # init sample
+    d = o.d
+    z = D .* o.q_sampler(d) .+ μ
+    ρ, u = o.ρ_sampler(d), rand()
+    z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
+ 
+    # save t^k(x), logjs, logqn
+    logjs = zeros(2*n_mcmc-2)    
+    logq0s = zeros(2*n_mcmc-1)
+    logqns = zeros(n_mcmc)    
+
+    # flow bwd n-1 step 
+    @inbounds for i in n_mcmc-1:-1:1
+        logjs[i] = o.lpdf_mom(ρ0)
+        ρ0, u0 = inv_ref(o, z0, ρ0, u0)
+        logjs[i] -= o.lpdf_mom(ρ0)
+        z0, ρ0 = leapfrog(o, -ϵ, z0, ρ0)
+        logq0s[i] = o.logq0(z0, μ, d) + o.lpdf_mom(ρ0)
+    end
+    logq0s[n_mcmc] = o.lpdf_mom(ρ) + o.logq0(z, μ, d)
+    logp = o.logp(z) + o.lpdf_mom(ρ) 
+    # logqn(x0)
+    logqns[1] = logsumexp(@view(logq0s[n_mcmc:-1:1]) .+ cumsum(vcat([0.0], @view(logjs[n_mcmc-1:-1:1]))))
+    # jacobian prod
+    logj_prod = sum(@view(logjs[1:n_mcmc-1]))
+
+    # flow fwd n-1 step
+    @inbounds for i in 1:n_mcmc-1
+        z, ρ = leapfrog(o, ϵ, z, ρ)
+        logjs[n_mcmc - 1 + i] = -o.lpdf_mom(ρ)
+        ρ, u = refresh(o, z, ρ, u)
+        logjs[n_mcmc - 1 + i] += o.lpdf_mom(ρ)
+        logq0 = o.logq0(z, μ, d) + o.lpdf_mom(ρ)
+        logq0s[n_mcmc + i] = logq0
+        # update logqn(T^n x)
+        l = logq0s[i] + logj_prod 
+        el = log(exp(logqns[i]) - exp(l)) + logjs[i+n_mcmc-1]
+        logqns[1+i] = logsumexp([el, logq0])
+        # udpate jacobian prod
+        logj_prod += logjs[i] - logjs[i+n_mcmc-1]
+        # update logp
+        logp += o.logp(z) + o.lpdf_mom(ρ) 
+    end
+    logp /= n_mcmc
+    return logp - mean(logqns)
+end
+
 
 function single_elbo_long(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
     # init sample
@@ -241,41 +290,36 @@ function single_elbo_long(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, 
     ρ, u = o.ρ_sampler(d), rand()
     z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
  
-    # save T^k(x), logJs, logqN
-    logJs = zeros(2*n_mcmc-2)    
+    # save logjs, logq0,logqn
+    logjs = zeros(2*n_mcmc-2)    
     logq0s = zeros(2*n_mcmc-1)
-    logqNs = zeros(n_mcmc)    
+    logqns = zeros(n_mcmc)    
 
-    # flow bwd N-1 step 
+    # flow bwd n-1 step 
     @inbounds for i in n_mcmc-1:-1:1
-        logJs[i] = o.lpdf_mom(ρ0)
+        logjs[i] = o.lpdf_mom(ρ0)
         ρ0, u0 = inv_ref(o, z0, ρ0, u0)
-        logJs[i] -= o.lpdf_mom(ρ0)
+        logjs[i] -= o.lpdf_mom(ρ0)
         z0, ρ0 = leapfrog(o, -ϵ, z0, ρ0)
-        logq0s[i] = o.logq0(z0, μ, D) + o.lpdf_mom(ρ0)
+        logq0s[i] = o.logq0(z0, μ, d) + o.lpdf_mom(ρ0)
     end
-    logq0s[n_mcmc] = o.lpdf_mom(ρ) + o.logq0(z, μ, D)
+    logq0s[n_mcmc] = o.lpdf_mom(ρ) + o.logq0(z, μ, d)
     logp = o.logp(z) + o.lpdf_mom(ρ) 
-    logqNs[1] = logmeanexp(@view(logq0s[n_mcmc:-1:1]) .+ cumsum(vcat([0.0], @view(logJs[n_mcmc-1:-1:1]))))
-    # logJ_prod = sum(@view(logJs[1:n_mcmc-1]))
+    logqns[1] = logmeanexp(@view(logq0s[n_mcmc:-1:1]) .+ cumsum(vcat([0.0], @view(logjs[n_mcmc-1:-1:1]))))
 
-    # flow fwd N-1 step
+    # flow fwd n-1 step
     @inbounds for i in n_mcmc:2*n_mcmc - 2 
         z, ρ = leapfrog(o, ϵ, z, ρ)
-        logJs[i] = -o.lpdf_mom(ρ)
+        logjs[i] = -o.lpdf_mom(ρ)
         ρ, u = refresh(o, z, ρ, u)
-        logJs[i] += o.lpdf_mom(ρ)
-        logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
+        logjs[i] += o.lpdf_mom(ρ)
+        logq0 = o.logq0(z, μ, d) + o.lpdf_mom(ρ)
         logq0s[i+1] = logq0
-        # update logqN(T^n x)
-        # l = logq0s[i - n_mcmc+1] + logJ_prod - log(n_mcmc)
-        # el = log(exp(logqNs[i-n_mcmc+1]) - exp(l)) + logJs[i]
-        # logqNs[i-n_mcmc+2] = logsumexp([el, logq0 - log(n_mcmc)])
-        logqNs[i-n_mcmc+2] = logmeanexp(@view(logq0s[i+1:-1:i-n_mcmc+2]) .+ cumsum(vcat([0.0], @view(logJs[i:-1:i-n_mcmc+2]))))
-        # logJ_prod += logJs[i-n_mcmc+2] - logJs[i-1] 
+        # update logqn(t^n x)
+        logqns[i-n_mcmc+2] = logmeanexp(@view(logq0s[i+1:-1:i-n_mcmc+2]) .+ cumsum(vcat([0.0], @view(logjs[i:-1:i-n_mcmc+2]))))
         logp += o.logp(z) + o.lpdf_mom(ρ) 
     end
     logp /= n_mcmc
-    return logp - mean(logqNs)
+    return logp - mean(logqns)
 end
 
