@@ -179,6 +179,7 @@ function log_density_stream(z, ρ, u, o::HamFlow, a::HF_params, inv_ref::Functio
     return logqs
 end
 
+
 ############################
 ### single_elbo estimate 
 ############################
@@ -233,59 +234,6 @@ end
 #     return el-logqN
 # end
 
-
-function single_elbo_fast(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
-    # init sample
-    d = o.d
-    z = D .* o.q_sampler(d) .+ μ
-    ρ, u = o.ρ_sampler(d), rand()
-    z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
- 
-    # save t^k(x), logjs, logqn
-    logjs = zeros(n_mcmc-1)    
-    logq0s = zeros(n_mcmc)
-    logqns = zeros(n_mcmc)    
-
-    # flow bwd n-1 step 
-    @inbounds for i in n_mcmc-1:-1:1
-        logjs[i] = o.lpdf_mom(ρ0)
-        ρ0, u0 = inv_ref(o, z0, ρ0, u0)
-        logjs[i] -= o.lpdf_mom(ρ0)
-        z0, ρ0 = leapfrog(o, -ϵ, z0, ρ0)
-        logq0s[i] = o.logq0(z0, μ, D) + o.lpdf_mom(ρ0)
-    end
-    logq0s[n_mcmc] = o.lpdf_mom(ρ) + o.logq0(z, μ, D)
-    logp = o.logp(z) + o.lpdf_mom(ρ) 
-    # logqn(x0)
-    logqns[1] = logmeanexp(@view(logq0s[n_mcmc:-1:1]) .+ cumsum(vcat([0.0], @view(logjs[n_mcmc-1:-1:1]))))
-    # jacobian prod
-    logj_prod = sum(@view(logjs[1:n_mcmc-1]))
-
-    # flow fwd n-1 step
-    @inbounds for i in 1:n_mcmc-1
-        z, ρ = leapfrog(o, ϵ, z, ρ)
-        # logjs[n_mcmc - 1 + i] -= o.lpdf_mom(ρ)
-        logJ = -o.lpdf_mom(ρ)
-        ρ, u = refresh(o, z, ρ, u)
-        # logjs[n_mcmc - 1 + i] += o.lpdf_mom(ρ)
-        logJ += o.lpdf_mom(ρ)
-        logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
-        # logq0s[n_mcmc + i] = logq0
-        # update logqn(T^n x)
-        l = logq0s[i] + logj_prod - log(n_mcmc)
-        el = log(exp(logqns[i]) - exp(l)) + logJ
-        logqns[1+i] = logsumexp([el, logq0 - log(n_mcmc)])
-        # udpate jacobian prod
-        logj_prod += logJ - logjs[i]
-        # logj_prod = sum(@view(logjs[i+1:n_mcmc-1+i]))
-        # update logp
-        logp += o.logp(z) + o.lpdf_mom(ρ) 
-    end
-    logp /= n_mcmc
-    return logp - mean(logqns) 
-end
-
-
 function single_elbo_long(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
     # init sample
     d = o.d
@@ -326,3 +274,111 @@ function single_elbo_long(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, 
     return logp - mean(logqns)
 end
 
+
+function DensityTripleSave(z0::Vector{Float64}, ρ0::Vector{Float64}, u0::Float64, o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, inv_ref::Function, n_mcmc::Int)
+    # save t^k(x), logjs, logqn
+    logjs = zeros(n_mcmc-1)    
+    logq0s = zeros(n_mcmc)
+    
+    # logq0(x0)
+    logq0s[n_mcmc] = o.lpdf_mom(ρ0) + o.logq0(z0, μ, D)
+    # flow bwd n-1 step 
+    @inbounds for i in n_mcmc-1:-1:1
+        logjs[i] = o.lpdf_mom(ρ0)
+        ρ0, u0 = inv_ref(o, z0, ρ0, u0)
+        logjs[i] -= o.lpdf_mom(ρ0)
+        z0, ρ0 = leapfrog(o, -ϵ, z0, ρ0)
+        logq0s[i] = o.logq0(z0, μ, D) + o.lpdf_mom(ρ0)
+    end
+    # logqn(x0)
+    logqn = logmeanexp(@view(logq0s[n_mcmc:-1:1]) .+ cumsum(vcat([0.0], @view(logjs[n_mcmc-1:-1:1]))))
+    # jacobian prod
+    logj_prod = sum(@view(logjs[1:n_mcmc-1]))
+    
+    return logqn, logj_prod, logq0s, logjs
+end
+
+function single_elbo_fast(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+    # init sample
+    d = o.d
+    z = D .* o.q_sampler(d) .+ μ
+    ρ, u = o.ρ_sampler(d), rand()
+    z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
+ 
+    # save t^k(x), logjs, logqn
+    logqns = zeros(n_mcmc)    
+    # flow bwd n-1 step 
+    logqn, logj_prod, logq0s, logjs = DensityTripleSave(z0, ρ0, u0, o, ϵ, μ, D, inv_ref, n_mcmc)
+    logqns[1] = logqn
+    logp = o.logp(z) + o.lpdf_mom(ρ) 
+
+    # flow fwd n-1 step
+    @inbounds for i in 1:n_mcmc-1
+        z, ρ = leapfrog(o, ϵ, z, ρ)
+        logJ = -o.lpdf_mom(ρ)
+        ρ, u = refresh(o, z, ρ, u)
+        logJ += o.lpdf_mom(ρ)
+        logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
+        # update logqn(T^n x)
+        l = logq0s[i] + logj_prod - log(n_mcmc)
+        el = log(expm1(logqns[i]) - expm1(l)) + logJ
+        logqns[1+i] = logsumexp([el, logq0 - log(n_mcmc)])
+        # udpate jacobian prod
+        logj_prod += logJ - logjs[i]
+        # update logp
+        logp += o.logp(z) + o.lpdf_mom(ρ) 
+    end
+    logp /= n_mcmc
+    return logp - mean(logqns) 
+end
+
+function DensityTriple(z0, ρ0, u0, o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, inv_ref::Function, n_mcmc::Int)
+    logJ = 0.0     
+    # logq0(x0)
+    logqn = o.lpdf_mom(ρ0) + o.logq0(z0, μ, D)
+    # flow bwd n-1 step 
+    for i in n_mcmc-1:-1:1
+        logJ += o.lpdf_mom(ρ0)
+        ρ0, u0 = inv_ref(o, z0, ρ0, u0)
+        logJ -= o.lpdf_mom(ρ0)
+        z0, ρ0 = leapfrog(o, -ϵ, z0, ρ0)
+        logqn = logsumexp([logqn, o.logq0(z0, μ, D) + o.lpdf_mom(ρ0) + logJ])
+    end
+    logqn -= log(n_mcmc) 
+    return logqn, logJ, z0, ρ0, u0 
+end
+
+function single_elbo_eff(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+    # init sample
+    d = o.d
+    z = D .* o.q_sampler(d) .+ μ
+    ρ, u = o.ρ_sampler(d), rand()
+    z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
+    
+    logqn, logj_prod, z0, ρ0, u0 =  DensityTriple(z0, ρ0, u0, o, ϵ, μ, D, inv_ref, n_mcmc)
+    f = o.logp(z) + o.lpdf_mom(ρ)
+    g = logqn
+
+    # flow fwd n-1 step
+    @inbounds for i in 1:n_mcmc-1
+        logqb = o.logq0(z0, μ, D) + o.lpdf_mom(ρ0) + logj_prod - log(n_mcmc)
+        z, ρ = leapfrog(o, ϵ, z, ρ)
+        logJ = -o.lpdf_mom(ρ)
+        ρ, u = refresh(o, z, ρ, u)
+        logJ += o.lpdf_mom(ρ)
+        logqn = log(expm1(logqn) - expm1(logqb)) + logJ
+        logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
+        logqn = logsumexp([logqn, logq0 - log(n_mcmc)])
+        # update logp, logqn
+        f += o.logp(z) + o.lpdf_mom(ρ) 
+        g += logqn
+        # update x' and get jacobian
+        z0, ρ0 = leapfrog(o, ϵ, z0, ρ0)
+        logJ1 = -o.lpdf_mom(ρ0)
+        ρ0, u0 = refresh(o, z0, ρ0, u0)
+        logJ1 += o.lpdf_mom(ρ0)
+        # udpate jacobian prod
+        logj_prod += logJ - logJ1
+    end
+    return (f - g)/n_mcmc
+end
