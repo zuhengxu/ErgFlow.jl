@@ -332,53 +332,114 @@ function single_elbo_fast(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, 
     return logp - mean(logqns) 
 end
 
-function DensityTriple(z0, ρ0, u0, o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, inv_ref::Function, n_mcmc::Int)
-    logJ = 0.0     
+# function DensityTriple(z0, ρ0, u0, o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, inv_ref::Function, n_mcmc::Int)
+#     logJ = 0.0     
+#     # logq0(x0)
+#     logqn = o.lpdf_mom(ρ0) + o.logq0(z0, μ, D)
+#     # flow bwd n-1 step 
+#     for i in n_mcmc-1:-1:1
+#         logJ += o.lpdf_mom(ρ0)
+#         ρ0, u0 = inv_ref(o, z0, ρ0, u0)
+#         logJ -= o.lpdf_mom(ρ0)
+#         z0, ρ0 = leapfrog(o, -ϵ, z0, ρ0)
+#         logqn = logsumexp([logqn, o.logq0(z0, μ, D) + o.lpdf_mom(ρ0) + logJ])
+#     end
+#     logqn -= log(n_mcmc) 
+#     return logqn, logJ, z0, ρ0, u0 
+# end
+
+# function single_elbo_eff(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+#     # init sample
+#     d = o.d
+#     z = D .* o.q_sampler(d) .+ μ
+#     ρ, u = o.ρ_sampler(d), rand()
+#     z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
+    
+#     logqn, logj_prod, z0, ρ0, u0 =  DensityTriple(z0, ρ0, u0, o, ϵ, μ, D, inv_ref, n_mcmc)
+#     f = o.logp(z) + o.lpdf_mom(ρ)
+#     g = logqn
+
+#     # flow fwd n-1 step
+#     @inbounds for i in 1:n_mcmc-1
+#         logqb = o.logq0(z0, μ, D) + o.lpdf_mom(ρ0) + logj_prod - log(n_mcmc)
+#         z, ρ = leapfrog(o, ϵ, z, ρ)
+#         logJ = -o.lpdf_mom(ρ)
+#         ρ, u = refresh(o, z, ρ, u)
+#         logJ += o.lpdf_mom(ρ)
+#         logqn = log(expm1(logqn) - expm1(logqb)) + logJ
+#         logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
+#         logqn = logsumexp([logqn, logq0 - log(n_mcmc)])
+#         # update logp, logqn
+#         f += o.logp(z) + o.lpdf_mom(ρ) 
+#         g += logqn
+#         # update x' and get jacobian
+#         z0, ρ0 = leapfrog(o, ϵ, z0, ρ0)
+#         logJ1 = -o.lpdf_mom(ρ0)
+#         ρ0, u0 = refresh(o, z0, ρ0, u0)
+#         logJ1 += o.lpdf_mom(ρ0)
+#         # udpate jacobian prod
+#         logj_prod += logJ - logJ1
+#     end
+#     return (f - g)/n_mcmc
+# end
+
+function DensityTripleSweep(z::Vector{Float64}, ρ::Vector{Float64}, u::Float64, o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int)
+    z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
+    # save t^k(x), logjs, logqn
+    logjs = zeros(2*n_mcmc-2)    
+    logq0s = zeros(2*n_mcmc-1)
+    logps = zeros(n_mcmc)
+    
     # logq0(x0)
-    logqn = o.lpdf_mom(ρ0) + o.logq0(z0, μ, D)
+    logq0s[n_mcmc] = o.lpdf_mom(ρ0) + o.logq0(z0, μ, D)
     # flow bwd n-1 step 
-    for i in n_mcmc-1:-1:1
-        logJ += o.lpdf_mom(ρ0)
+    @inbounds for i in n_mcmc-1:-1:1
+        logjs[i] = o.lpdf_mom(ρ0)
         ρ0, u0 = inv_ref(o, z0, ρ0, u0)
-        logJ -= o.lpdf_mom(ρ0)
+        logjs[i] -= o.lpdf_mom(ρ0)
         z0, ρ0 = leapfrog(o, -ϵ, z0, ρ0)
-        logqn = logsumexp([logqn, o.logq0(z0, μ, D) + o.lpdf_mom(ρ0) + logJ])
+        logq0s[i] = o.logq0(z0, μ, D) + o.lpdf_mom(ρ0)
     end
-    logqn -= log(n_mcmc) 
-    return logqn, logJ, z0, ρ0, u0 
+    
+    # flow fwd n-1 step
+    logps[1] = o.logp(z) + o.lpdf_mom(ρ)
+    @inbounds for i in n_mcmc:2*n_mcmc - 2 
+        z, ρ = leapfrog(o, ϵ, z, ρ)
+        logjs[i] = -o.lpdf_mom(ρ)
+        ρ, u = refresh(o, z, ρ, u)
+        logjs[i] += o.lpdf_mom(ρ)
+        logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
+        logq0s[i+1] = logq0
+        logps[i-n_mcmc+2] = o.logp(z) + o.lpdf_mom(ρ) 
+    end
+    return logq0s, logjs, logps
 end
 
-function single_elbo_eff(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, n_mcmc::Int; nBurn::Int = 0)
+function single_elbo_sweep(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, D::Vector{Float64}, refresh::Function, inv_ref::Function, Ns::Vector{Int64}; nBurn::Int = 0)
     # init sample
     d = o.d
     z = D .* o.q_sampler(d) .+ μ
     ρ, u = o.ρ_sampler(d), rand()
-    z0, ρ0, u0 = copy(z), copy(ρ), copy(u) 
     
-    logqn, logj_prod, z0, ρ0, u0 =  DensityTriple(z0, ρ0, u0, o, ϵ, μ, D, inv_ref, n_mcmc)
-    f = o.logp(z) + o.lpdf_mom(ρ)
-    g = logqn
-
-    # flow fwd n-1 step
-    @inbounds for i in 1:n_mcmc-1
-        logqb = o.logq0(z0, μ, D) + o.lpdf_mom(ρ0) + logj_prod - log(n_mcmc)
-        z, ρ = leapfrog(o, ϵ, z, ρ)
-        logJ = -o.lpdf_mom(ρ)
-        ρ, u = refresh(o, z, ρ, u)
-        logJ += o.lpdf_mom(ρ)
-        logqn = log(expm1(logqn) - expm1(logqb)) + logJ
-        logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
-        logqn = logsumexp([logqn, logq0 - log(n_mcmc)])
-        # update logp, logqn
-        f += o.logp(z) + o.lpdf_mom(ρ) 
-        g += logqn
-        # update x' and get jacobian
-        z0, ρ0 = leapfrog(o, ϵ, z0, ρ0)
-        logJ1 = -o.lpdf_mom(ρ0)
-        ρ0, u0 = refresh(o, z0, ρ0, u0)
-        logJ1 += o.lpdf_mom(ρ0)
-        # udpate jacobian prod
-        logj_prod += logJ - logJ1
+    # compute Tk(x), logJs, logps
+    n_mcmc = maximum(Ns)
+    logq0s, logjs, logps = DensityTripleSweep(z, ρ, u, o, ϵ, μ, D, refresh, inv_ref, n_mcmc)
+    
+    # compute logqn
+    K = size(Ns, 1)
+    logqns = zeros(K, n_mcmc) 
+    f = zeros(K)
+    g = zeros(K)
+    @inbounds begin
+        logqns[:, 1] .= logsumexp_sweep(@view(logq0s[n_mcmc:-1:1]) .+ cumsum(vcat([0.0], @view(logjs[n_mcmc-1:-1:1]))), Ns)
+        @simd for i in n_mcmc:2*n_mcmc-2
+            logqns[:, i-n_mcmc+2] .= logsumexp_sweep(@view(logq0s[i+1:-1:i-n_mcmc+2]) .+ cumsum(vcat([0.0], @view(logjs[i:-1:i-n_mcmc+2]))), Ns)
+        end
+        # compute elbo 
+        @simd for i in 1:K
+            f[i] = sum(@view(logps[1:Ns[i]]))/Ns[i]
+            g[i] = mean(@view(logqns[i, 1:Ns[i]])) - log(Ns[i])
+        end
     end
-    return (f - g)/n_mcmc
+    return vec(f .- g)
 end

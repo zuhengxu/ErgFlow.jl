@@ -31,30 +31,33 @@ function ELBO_fast(o::ErgodicFlow, ϵ, μ, D, refresh::Function, inv_ref::Functi
     return el[]
 end
 
-function ELBO_eff(o::ErgodicFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; elbo_size::Int = 1, nBurn::Int = 0, print = false)
-    el = Threads.Atomic{Float64}(0.0) # have to use atomic_add! to avoid racing 
+
+function ELBO_sweep(o::ErgodicFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, Ns::Vector{Int}; elbo_size::Int = 1, nBurn::Int = 0, print = false)
     if print
         prog_bar = ProgressMeter.Progress(elbo_size, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     end
+    ELs = zeros(size(Ns,1), elbo_size)
     @threads for i in 1:elbo_size
-        el_single = single_elbo_eff(o, ϵ, μ, D, refresh, inv_ref, n_mcmc; nBurn=nBurn)
-        Threads.atomic_add!(el, 1/elbo_size * el_single)
+        el_single = single_elbo_sweep(o, ϵ, μ, D, refresh, inv_ref, Ns; nBurn=nBurn)
+        ELs[:, i] .= el_single 
         ProgressMeter.next!(prog_bar)
     end
-    return el[]
+    return vec(mean(ELs; dims = 2))
 end
-# function ELBO_long(o::ErgodicFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; elbo_size::Int = 1, nBurn::Int = 0, print = false)
+
+# function ELBO_eff(o::ErgodicFlow, ϵ, μ, D, refresh::Function, inv_ref::Function, n_mcmc::Int; elbo_size::Int = 1, nBurn::Int = 0, print = false)
 #     el = Threads.Atomic{Float64}(0.0) # have to use atomic_add! to avoid racing 
 #     if print
 #         prog_bar = ProgressMeter.Progress(elbo_size, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
 #     end
 #     @threads for i in 1:elbo_size
-#         el_single = single_elbo_long(o, ϵ, μ, D, refresh, inv_ref, n_mcmc; nBurn=nBurn)
+#         el_single = single_elbo_eff(o, ϵ, μ, D, refresh, inv_ref, n_mcmc; nBurn=nBurn)
 #         Threads.atomic_add!(el, 1/elbo_size * el_single)
 #         ProgressMeter.next!(prog_bar)
 #     end
 #     return el[]
 # end
+
 
 
 # # same ELBO function but without @threads---cannot use multithreads inside Zygote

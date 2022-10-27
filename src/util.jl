@@ -35,6 +35,28 @@ end
 ###############
 # logsumexp function
 ##############
+function logsumexp(X)
+    alpha = maximum(X)  # Find maximum value in X
+    log(sum(exp, X.-alpha)) + alpha
+end
+
+function logsumexp_sweep(X::Vector{Float64}, Ns::Vector{Int64})
+    @assert maximum(Ns) == size(X,1)
+    L = zeros(size(Ns, 1))
+    L[1] = logsumexp(@view(X[1:Ns[1]]))
+    @views for i = 2:size(Ns, 1)
+        t = logsumexp(X[Ns[i-1]+1:Ns[i]])
+        l = logsumexp([t, L[i-1]])
+        L[i] = l
+    end
+    return L
+end
+
+function logmeanexp(X)
+    N = size(X, 1)
+    return logsumexp_stream(X) - log(N)
+end
+
 function logmeanexp_slice(w; dims = d)
 ```
 logsumexp function works on a specific slice of array 
@@ -64,15 +86,6 @@ adapt from "http://www.nowozin.net/sebastian/blog/streaming-log-sum-exp-computat
     return log(r) + alpha
 end
 
-function logsumexp(X)
-    alpha = maximum(X)  # Find maximum value in X
-    log(sum(exp, X.-alpha)) + alpha
-end
-
-function logmeanexp(X)
-    N = size(X, 1)
-    return logsumexp_stream(X) - log(N)
-end
 # n = 10_000
 # X = 500.0*randn(n)
 
