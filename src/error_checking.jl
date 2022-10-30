@@ -117,7 +117,6 @@ function check_time_shift(t0::Float64, Ns::Vector{Int64}, shift::Function, inv_s
 end    
    
 
-
 function flow_fwd_err_tr(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function,inv_ref::Function, z, ρ, u, n_mcmc::Int)
     leap_err = Vector{typeof(u)}(undef, n_mcmc)
     ref_err = Vector{typeof(u)}(undef, n_mcmc)

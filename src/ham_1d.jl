@@ -1,5 +1,5 @@
 ############### 
-# this is only used for generating 1d target
+# specialized HamFlow for 1d target
 ###############
 
 ##### struct of ergflow 
@@ -159,14 +159,14 @@ function single_error_checking(o::HamFlow_1d, a::HF1d_params, z, ρ, u, n_mcmc::
     return err
 end
 
-function numerical_error_cheking(o::HamFlow_1d, a::HF1d_params, X::Vector{Float64}, Y::Vector{Float64}, n_mcmc::Int)
+function numerical_error_checking(o::HamFlow_1d, a::HF1d_params, X::Vector{Float64}, Y::Vector{Float64}, n_mcmc::Int)
     n1, n2 = size(X, 1), size(Y, 1)
     T = zeros(n1, n2)
     prog_bar = ProgressMeter.Progress(n1*n2, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
     @threads for i = 1:n1
         # println("$i / $n1")
         for j=1:n2 
-            # this step is bit hacky since we do not use u
+            #  we do not use u
             T[i, j] = single_error_checking(o,a, X[i], Y[j], 0.5, n_mcmc)
             ProgressMeter.next!(prog_bar)
         end

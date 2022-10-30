@@ -7,15 +7,16 @@ using Base.Threads: @threads
 abstract type ErgodicFlow end
 abstract type flow_params end
 
+# referece distribution is set to be mean-field Gaussian distirbution---N(μ, D^2)
 struct HF_params <: flow_params
     leapfrog_stepsize::Vector{Float64}  
-    μ::Vector{Float64}
-    D::Vector{Float64}
+    μ::Vector{Float64} # Gaussian mean
+    D::Vector{Float64} # Diagonal Gaussian std 
 end
 
 
 export ErgodicFlow, HamFlow, HF_params
-export cdf_laplace_std, invcdf_laplace_std, cdf_normal, invcdf_normal
+export cdf_laplace_std, invcdf_laplace_std, cdf_normal, invcdf_normal, randl
 export pseudo_refresh, pseudo_refresh_coord, inv_refresh, inv_refresh_coord
 export flow_sampler, Sampler, Sampler!, flow_fwd, flow_fwd_trace
 

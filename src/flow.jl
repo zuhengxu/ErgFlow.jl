@@ -94,6 +94,7 @@ function flow_bwd(o::ErgodicFlow, ϵ::Vector{Float64}, inv_ref::Function, z, ρ,
     return z, ρ, u
 end
 
+# saving the whole trjecory
 function flow_fwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, z, ρ, u, n_mcmc::Int)
     T = Matrix{eltype(z)}(undef, 2*(n_mcmc-1)+1, o.d)
     M = Matrix{eltype(ρ)}(undef, 2*(n_mcmc-1)+1, o.d)
@@ -139,7 +140,6 @@ function flow_bwd_trace(o::ErgodicFlow, ϵ::Vector{Float64}, inv_ref::Function, 
         U[k+3] = u
         ProgressMeter.next!(prog_bar)
     end
-    # return T[end:-1:1, :], M[end:-1:1, :], U[end:-1:1]
     return T, M, U
 end
 
@@ -150,7 +150,8 @@ function flow_trace(o::ErgodicFlow, a::HF_params, refresh::Function, inv_ref::Fu
     return T_fwd, M_fwd, U_fwd, T_bwd, M_bwd, U_bwd 
 end
 
-## this is only for vis
+
+# further save leapfrog trajectory
 function flow_fwd_save(o::ErgodicFlow, ϵ::Vector{Float64}, refresh::Function, z, ρ, u, n_mcmc::Int; freq::Int = 10)
     n = Int(floor(o.n_lfrg / freq))
     T1, M1 = zeros(n, o.d, n_mcmc-1), zeros(n, o.d, n_mcmc-1)
@@ -175,7 +176,7 @@ end
 
 
 #################
-# generating samples from the flow
+# generating iid samples 
 #################3
 function Sampler(o::ErgodicFlow, a::HF_params, refresh::Function, n_mcmc::Int, N::Int; nBurn::Int64 = 0)
     d = o.d
@@ -198,6 +199,7 @@ function Sampler(o::ErgodicFlow, a::HF_params, refresh::Function, n_mcmc::Int, N
     return T, M, U
 end
 
+# writing samplers directly into Matrix T 
 function Sampler!(T::Matrix{Float64}, o::ErgodicFlow, a::HF_params, refresh::Function, n_mcmc::Int, N::Int; nBurn::Int64 = 0 )
     d = o.d
     @info "ErgFlow Sampling"
