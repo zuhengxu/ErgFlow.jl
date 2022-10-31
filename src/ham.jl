@@ -367,8 +367,9 @@ function single_elbo_fast(o::HamFlow, ϵ::Vector{Float64}, μ::Vector{Float64}, 
         logJ += o.lpdf_mom(ρ)
         logq0 = o.logq0(z, μ, D) + o.lpdf_mom(ρ)
         # update logqn(T^n x)
-        l = logq0s[i] + logj_prod - log(n_mcmc)
-        el = log(expm1(logqns[i]) - expm1(l)) + logJ
+        # l = logq0s[i] + logj_prod - log(n_mcmc)
+        l = logq0s[i] + logj_prod 
+        el = log(exp(logqns[i] + log(n_mcmc)) - exp(l)) + logJ - log(n_mcmc)
         logqns[1+i] = logsumexp([el, logq0 - log(n_mcmc)])
         # udpate jacobian prod
         logj_prod += logJ - logjs[i]
