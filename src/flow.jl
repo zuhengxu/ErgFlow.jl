@@ -199,6 +199,29 @@ function Sampler(o::ErgodicFlow, a::HF_params, refresh::Function, n_mcmc::Int, N
     return T, M, U
 end
 
+function Sampler_with_ind(o::ErgodicFlow, a::HF_params, refresh::Function, n_mcmc::Int, N::Int; nBurn::Int64 = 0)
+    d = o.d
+    T = Matrix{Float64}(undef, N, d)
+    M = Matrix{Float64}(undef, N, d)
+    U = Vector{Float64}(undef, N)
+    Ns = Vector{Int64}(undef, N)
+    @info "ErgFlow Sampling"
+    prog_bar = ProgressMeter.Progress(N, dt=0.5, barglyphs=ProgressMeter.BarGlyphs("[=> ]"), barlen=50, color=:yellow)
+    @threads for i in 1:N 
+        # Sample(Unif{1, ..., n_mcmc})
+        n_step = rand(nBurn+1:n_mcmc) 
+        z0 = a.D .* o.q_sampler(d) .+ a.μ
+        ρ0, u0 = o.ρ_sampler(d), rand()
+        z, ρ, u = flow_fwd(o, a.leapfrog_stepsize, refresh, z0, ρ0, u0, n_step)
+        T[i, :] .= z 
+        M[i, :] .= ρ
+        U[i] = u
+        Ns[i] = n_step
+        ProgressMeter.next!(prog_bar)
+    end
+    return T, M, U, Ns
+end
+
 # writing samplers directly into Matrix T 
 function Sampler!(T::Matrix{Float64}, o::ErgodicFlow, a::HF_params, refresh::Function, n_mcmc::Int, N::Int; nBurn::Int64 = 0 )
     d = o.d
@@ -260,4 +283,22 @@ function flow_sampler(o::ErgodicFlow, a::HF_params, refresh::Function, z, ρ, u,
         u = rand()
     end
     return T
+end
+
+
+function flow_sampler_all(o::ErgodicFlow, a::HF_params, refresh::Function, n_mcmc::Int, n_samples::Int)
+    TT = Matrix{Float64}(undef, n_samples, o.d)
+    MM = Matrix{Float64}(undef, n_samples, o.d)
+    UU = Vector{Float64}(undef, n_samples)
+    k = Int(n_samples/n_mcmc)
+    for i in 1:k 
+        z = randn(o.d) .* a.D .+ a.μ
+        ρ = o.ρ_sampler(o.d)
+        u = rand()
+        T, M, U = flow_sampler(o, a, refresh,z, ρ, u, n_mcmc)
+        TT[(i-1)*n_mcmc+1:i*n_mcmc, :] .= T
+        MM[(i-1)*n_mcmc+1:i*n_mcmc, :] .= M
+        UU[(i-1)*n_mcmc+1:i*n_mcmc] .= U
+    end
+    return TT, MM, UU
 end
